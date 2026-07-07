@@ -1,6 +1,6 @@
 import pandas as pd
 from django.core.management.base import BaseCommand
-from prediction_app.models import TaxiTripFeature
+from prediction_app.models import Location, Historical
 
 class Command(BaseCommand): # python manage.py ile çalıştırılabilir hale gel.
     help = 'Load the dataframe into the database'
@@ -19,34 +19,60 @@ class Command(BaseCommand): # python manage.py ile çalıştırılabilir hale ge
         # veri tabanı hata vermesin diye NaN değer varsa, Python None tipine çevirelim.
         df = df.where(pd.notnull(df), None)
 
+        self.stdout.write(self.style.SUCCESS(f"Total {len(df)} rows found."))
+        
+        #! Location Detection
+        self.stdout.write(self.style.WARNING("Locations checking..."))
+        unique_ids = df["PULocationID"].unique()    # parquet dosyasındaki lokasyon kodları
+        existing_ids = set(Location.objects.values_list('pulocation_id', flat=True))    # databasede olan lokasyon id
+        new_locations = []
+
+        for loc_id in unique_ids:
+            if loc_id not in existing_ids:
+                new_locations.append(Location(pulocation_id=int(loc_id)))
+
+        if new_locations:
+            Location.objects.bulk_create(new_locations, ignore_conflicts=True)
+            self.stdout.write(self.style.SUCCESS(f"{len(new_locations)} new locations created."))
+
+        location_map = {}   # lokasyon kodu ile lokasyon objesine hızlı erişim
+
+        for location in Location.objects.all():
+            location_map.update({location.pulocation_id: location})
+
+        #! Historical Data
+        self.stdout.write(self.style.WARNING("Uploading the historical data."))
         instances = []
 
-        self.stdout.write(self.style.SUCCESS(f"Total {len(df)} rows found."))
-
         for index, row in df.iterrows():
+            loc_id = int(row["PULocationID"])
+            location = location_map.get(loc_id)
+
+            if not location:
+                continue
 
             flag = True if row["month_index"] <= 23 else False
 
             instances.append(
-                TaxiTripFeature(
-                    datetime=row["pickup_hour"],
-                    pulocation_id=row["PULocationID"],
-                    is_train=flag,  
-                    actual_trip_count=row["trip_count"],
+                Historical(
+                    pulocation = location,
+                    datetime = row["pickup_hour"],
+                    trip_count = row["trip_count"],
+                    rollin_mean_3h = row["rollin_mean_3h"],
+                    rolling_std_12h = row["rolling_std_12h"],
                     lag_24h = row["lag_24h"],
                     lag_168h = row["lag_168h"],
-                    rolling_mean_3h = row["rollin_mean_3h"],
-                    rolling_std_12h = row["rolling_std_12h"],
-                    ewm_12h = row["ewm_12h"]
+                    ewm_12h = row["ewm_12h"],
+                    is_train = flag
                 )
             )
 
             if len(instances) >= 10000:
-                TaxiTripFeature.objects.bulk_create(instances, ignore_conflicts=True)
+                Historical.objects.bulk_create(instances, ignore_conflicts=True)
                 instances = []
-                self.stdout.write(f"{index + 1} rows executed.")
+                self.stdout.write(f"{index + 1} rows completed.")
 
         if instances:
-            TaxiTripFeature.objects.bulk_create(instances, ignore_conflicts=True)   #! parça parça duplicate engelleyerek db oluştur.
+            Historical.objects.bulk_create(instances, ignore_conflicts=True)
 
         self.stdout.write(self.style.SUCCESS("All datas uploaded to the database!"))
