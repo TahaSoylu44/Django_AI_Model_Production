@@ -67,3 +67,20 @@ class PredictionDetailView(DetailView):
     model = Prediction
     template_name = "prediction_app/prediction_result.html"
     context_object_name = "prediction_object"
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)    # HTML'e giden dict
+        current_prediction = self.get_object()  # yakalan prediction objesi
+
+        historical_record = Historical.objects.filter(  # aynı tarih ve saatlisini bul.
+            pulocation=current_prediction.pulocation,
+            datetime=current_prediction.datetime
+        ).first()
+
+        context["record"] = historical_record
+        return context
+    
+    #! normalde biz redirect ile bu class içerisine girdiğimizde elimizde sadece
+    #! tahmin verisi vardı. Ama ben bu tahmin verisini gerçek değer ile karşılaştırmak
+    #! istediğimden "get_context_data" fonksiyonunu override edip "record" historical
+    #! objesini de HTML'e göndereceğim.
