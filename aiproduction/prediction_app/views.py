@@ -1,61 +1,69 @@
-# import json
-# from django.http import JsonResponse
-# from django.views.decorators.csrf import csrf_exempt
-# from .models import TaxiTripFeature
-# from .apps import PredictionAppConfig
-# from .preprocessing import build_dataframe, get_int_taxi_count
+from django.views.generic import FormView, DetailView
+from django.shortcuts import redirect
+from .forms import TripPredictionForm
+from .models import Historical, Prediction
+from .preprocessing import build_dataframe, get_int_taxi_count
+from django.apps import apps
+import lightgbm as lgb
 
-# @csrf_exempt    # CSRF kalkanını kapat 
-# def predict_trip_count(request):
-#     if request.method == "POST":
-#         try:
-#             body = json.loads(request.body)
+class Home(FormView):
+    template_name = "prediction_app/home.html"
+    form_class = TripPredictionForm
 
-#             request_data = {    # user tarafından sağlanan veri ile bir dict oluşturdum.
-#                 "datetime": body.get("datetime"),
-#                 "PULocationID": body.get("PULocationID")
-#             }
+    def form_valid(self, form): # eğer gelen request, tanımladığımız form class ile uyumlu ise otomatik çalışır.
+        location = form.cleaned_data['location']
+        target_date = form.cleaned_data['target_datetime']
+        user_name = form.cleaned_data["predictor_name"]
 
-#             db_record = TaxiTripFeature.objects.filter(
-#                 datetime=request_data["datetime"],
-#                 pulocation_id=request_data["PULocationID"]
-#             ).first()   # database'de veri varsa al yoksa None dön!
+        target_date = target_date.replace(minute=0, second=0, microsecond=0)    # verimiz tam saatler üzerine kurulu
 
-#             if not db_record:
-#                 return JsonResponse({
-#                     "status": "ERROR!",
-#                     "message": "Enter a valid range 2015-2016"
-#                 }, status=404)
-            
-#             if db_record.is_train:  # Train verisi
-#                 return JsonResponse({
-#                     "status": "SUCCESS",
-#                     "message": "The data belongs to the training set. The actual values are listed.",
-#                     "actual_trip_count": db_record.actual_trip_count
-#                 })
-            
-#             else:   # Test Verisi
-#                 historical_stats = {
-#                     "lag_24h": db_record.lag_24h,
-#                     "lag_168h": db_record.lag_168h,
-#                     "rolling_mean_3h": db_record.rolling_mean_3h,
-#                     "rolling_std_12h": db_record.rolling_std_12h,
-#                     "ewm_12h": db_record.ewm_12h
-#                 }
+        record = Historical.objects.filter(pulocation=location, datetime=target_date).first()
+        #! Eğer böyle bir veri database de varsa al yoksa None dön!
 
-#                 #! PREDICTION
-#                 final_df = build_dataframe(request_data, historical_stats)
-#                 prediction_array = PredictionAppConfig.model.predict(final_df)
-#                 prediction_value = get_int_taxi_count(float(prediction_array[0]))
+        if not record:  #!
+            form.add_error(None, "Please select a date between 2015-2016")
+            return self.form_invalid(form)
 
-#                 return JsonResponse({
-#                     "status": "SUCCESS",
-#                     "message": "The prediction was calculated.",
-#                     "predicted_trip_count": prediction_value,
-#                     "actual_trip_count": db_record.actual_trip_count                    
-#                 })
+        #TODO: EĞİTİM VERİSİ
+        if record.is_train:
+            return redirect('prediction_app:historical_detail', pk=record.pk)
+        
+        else:   #* Tahmin verisi
+            request_data = {
+                "datetime": target_date,
+                "PULocationID": location
+            }
 
-#         except Exception as e:
-#             return JsonResponse({"status": "error", "message": str(e)}, status=400)
+            historical_data = {
+                "lag_24h": record.lag_24h,
+                "rolling_std_12h": record.rolling_std_12h,
+                "rollin_mean_3h": record.rollin_mean_3h,
+                "lag_168h": record.lag_168h,
+                "ewm_12h": record.ewm_12h
+            }
 
-#     return JsonResponse({"state": "ERROR!", "message": "Only POST accepted"}, status=405)
+            final_df = build_dataframe(request_data, historical_data)
+            app_config = apps.get_app_config('prediction_app')
+
+            prediction_array = app_config.model.predict(final_df)
+            prediction = get_int_taxi_count(float(prediction_array[0]))
+
+            prediction_object = Prediction.objects.create(
+                pulocation = location,
+                datetime = target_date,
+                predValue = prediction,
+                predictor_name = user_name
+            )
+
+            return redirect('prediction_app:prediction_detail', pk=prediction_object.pk)
+        
+
+class HistoricalDetailView(DetailView):
+    model = Historical
+    template_name = "prediction_app/historical_result.html"
+    context_object_name = "record"
+
+class PredictionDetailView(DetailView):
+    model = Prediction
+    template_name = "prediction_app/prediction_result.html"
+    context_object_name = "prediction_object"

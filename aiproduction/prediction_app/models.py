@@ -23,3 +23,4 @@ class Prediction(models.Model):
     predValue = models.FloatField()
     created_at = models.DateTimeField(auto_now_add=True)    # Bu tahmin ne zaman çalıştırıldı?
     is_train = models.BooleanField(default=False, db_index=True)
+    predictor_name = models.CharField(max_length=100, default="Anonim")

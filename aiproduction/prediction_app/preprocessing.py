@@ -24,10 +24,10 @@ def build_dataframe(request_data: dict, historical_data: dict) -> pd.DataFrame:
     is_evening_rush = int((17 <= hour <= 19) and is_weekdays)
     is_midday_break = int((11 <= hour <= 13) and is_weekdays)
 
-    spring_boolean = month.isin([3,4,5])
-    summer_boolean = month.isin([6,7,8])
-    fall_boolean = month.isin([9,10,11])
-    winter_boolean = month.isin([12,1,2])
+    spring_boolean = int((month == 3) or (month == 4) or (month == 5))
+    summer_boolean = int((month == 6) or (month == 7) or (month == 8))
+    fall_boolean = int((month == 9) or (month == 10) or (month == 11))
+    winter_boolean = int((month == 12) or (month == 1) or (month == 2))
     season = None
 
     if spring_boolean:
@@ -46,8 +46,8 @@ def build_dataframe(request_data: dict, historical_data: dict) -> pd.DataFrame:
     day_of_week_cos = np.cos(2 * np.pi * day_of_week / 7)
     seasons_sin = np.sin(2 * np.pi * season / 4)
 
-    pulocation = df["PULocationID"].values[0]
-    pulocation_id = 250 if pulocation > 250 else pulocation
+    pulocation = df["PULocationID"].values[0].pulocation_id
+    pulocation_new = 250 if pulocation > 250 else pulocation
 
     feature_df = {
         "is_weekdays": is_weekdays,
@@ -63,7 +63,7 @@ def build_dataframe(request_data: dict, historical_data: dict) -> pd.DataFrame:
         "seasons_sin": seasons_sin,
         "lag_24h": historical_data.get("lag_24h", 0),   # eğer değeri veri tabanında bulursan onu al, yoksa 0 de!
         "rolling_std_12h": historical_data.get("rolling_std_12h", 0),
-        "PULocationID": pulocation_id,
+        "PULocationID": pulocation_new,
         "rollin_mean_3h": historical_data.get("rolling_mean_3h", 0),
         "lag_168h": historical_data.get("lag_168h", 0),
         "ewm_12h": historical_data.get("ewm_12h", 0)
