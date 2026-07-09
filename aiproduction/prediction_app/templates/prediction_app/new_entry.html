@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>New Driver Entry</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f8f9fa; }
+        ul.errorlist { color: #dc3545; list-style-type: none; padding: 0; font-weight: bold; margin-bottom: 0; }
+    </style>
+</head>
+<body>
+    <div class="container mt-5 mb-5">
+        
+        {% if messages %}
+            <div class="row justify-content-center mb-3">
+                <div class="col-md-8">
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
+                            <strong>System Info:</strong> {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                
+                <div class="card shadow-lg border-primary">
+                    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0">Log a New Taxi Trip</h4>
+                        <span class="badge bg-light text-primary">Raw Data Entry</span>
+                    </div>
+                    
+                    <div class="card-body p-4">
+                        <p class="text-muted mb-4">
+                            Enter the details of the recent trip. The system will automatically update the historical features and AI prediction pipelines in the background.
+                        </p>
+
+                        <form method="post" novalidate>
+                            {% csrf_token %}
+                            
+                            {% if form.non_field_errors %}
+                            <div class="alert alert-danger shadow-sm">
+                                {{ form.non_field_errors }}
+                            </div>
+                            {% endif %}
+                            
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">{{ form.driver_name.label }}</label>
+                                    {{ form.driver_name }}
+                                    {% if form.driver_name.errors %}
+                                        <div class="text-danger mt-1"><small>{{ form.driver_name.errors }}</small></div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label fw-bold">{{ form.passenger_count.label }}</label>
+                                    {{ form.passenger_count }}
+                                    {% if form.passenger_count.errors %}
+                                        <div class="text-danger mt-1"><small>{{ form.passenger_count.errors }}</small></div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6 mb-4">
+                                    <label class="form-label fw-bold">{{ form.location.label }}</label>
+                                    {{ form.location }}
+                                    {% if form.location.errors %}
+                                        <div class="text-danger mt-1"><small>{{ form.location.errors }}</small></div>
+                                    {% endif %}
+                                </div>
+                                
+                                <div class="col-md-6 mb-4">
+                                    <label class="form-label fw-bold">{{ form.datetime.label }}</label>
+                                    {{ form.datetime }}
+                                    {% if form.datetime.errors %}
+                                        <div class="text-danger mt-1"><small>{{ form.datetime.errors }}</small></div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <hr class="mb-4">
+                            
+                            <div class="d-flex justify-content-between">
+                                <a href="{% url 'prediction_app:home' %}" class="btn btn-outline-secondary px-4">Cancel</a>
+                                <button type="submit" class="btn btn-success px-5 fw-bold shadow-sm">Submit Trip Log</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

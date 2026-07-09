@@ -44,4 +44,4 @@ def reconstruct_pipeline(location_object: Location, updated_datetime: datetime):
         update_list.append(historical)
 
     if update_list:
-        Historical.objects.bulk_update(update_list, ["rollin_mean_3h", "rolling_std_12h", "lag_24h", "lag_168h", "ewm_12h"])
+        Historical.objects.bulk_update(update_list, ["rollin_mean_3h", "rolling_std_12h", "lag_24h", "lag_168h", "ewm_12h"], batch_size=500)

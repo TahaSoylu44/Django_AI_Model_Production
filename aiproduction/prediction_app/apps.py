@@ -14,3 +14,5 @@ class PredictionAppConfig(AppConfig):
         model_path = os.path.join(settings.BASE_DIR, 'prediction_app', 'models', 'lgb_model.pkl')
         if os.path.exists(model_path):
             PredictionAppConfig.model = joblib.load(model_path)
+
+        from . import signals  # signals dosyası

@@ -57,3 +57,43 @@ class ShowLocationsBasedOnDate(forms.Form):
             }
         )
     )
+
+class DriverForm(forms.Form):
+    """Taxi sürücüsü tarafindan girilen veriler"""
+    driver_name = forms.CharField(
+        label="Name and Surname",
+        max_length=100,
+        required=True,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Örn: Taha Soylu'
+        })
+    )
+
+    passenger_count = forms.IntegerField(
+        label="Passenger Count",
+        min_value=0
+    )
+
+    location = forms.ModelChoiceField(
+        queryset=Location.objects.all(),
+        label="Choose a location",
+        empty_label="Please select a location"
+    )
+
+    datetime = forms.DateTimeField(
+        label="Date and Hour",
+
+        validators=[
+            MinValueValidator(make_aware(datetime.datetime(2015, 1, 1, 0, 0))),
+            MaxValueValidator(make_aware(datetime.datetime(2016, 12, 31, 23, 59)))
+        ],
+
+        widget=forms.DateTimeInput( # HTML görünüm değiştirir.
+            attrs={
+                'type': 'datetime-local',
+                'min': '2015-01-01T00:00',
+                'max': '2016-12-31T23:59'
+            }
+        )
+    )
