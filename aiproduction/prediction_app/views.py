@@ -1,10 +1,11 @@
-from django.views.generic import FormView, DetailView
+from django.views.generic import FormView, DetailView, ListView
 from django.shortcuts import redirect
-from .forms import TripPredictionForm
-from .models import Historical, Prediction
+from .forms import TripPredictionForm, ShowLocationsBasedOnDate
+from .models import Historical, Prediction, Location
 from .preprocessing import build_dataframe, get_int_taxi_count
 from django.apps import apps
 import lightgbm as lgb
+from django.shortcuts import get_object_or_404, render
 
 class Home(FormView):
     template_name = "prediction_app/home.html"
@@ -84,3 +85,58 @@ class PredictionDetailView(DetailView):
     #! tahmin verisi vardı. Ama ben bu tahmin verisini gerçek değer ile karşılaştırmak
     #! istediğimden "get_context_data" fonksiyonunu override edip "record" historical
     #! objesini de HTML'e göndereceğim.
+
+class GeneralHistoricalView(ListView):
+    model = Historical
+    template_name = "prediction_app/general_historical_template.html"
+    context_object_name = "records"
+
+    paginate_by = 50    # 50 şer 50 şer göster sayfa 
+    
+    def dispatch(self, request, *args, **kwargs):   # Request geldiğinde ilk çalışan fonksiyonda, Database'e bulaşmadan ID check yaptım.
+        location_id = self.kwargs.get('pk')
+
+        if location_id < 1 or location_id > 265:
+            return render(self.request, "prediction_app/over_location.html", {"requested_id": location_id})
+        
+        return super().dispatch(request, *args, **kwargs)   # Her şey yolunda devam et.
+
+    def get_queryset(self):
+        # URL'den gelen 'pk' değerini yakala
+        location_id = self.kwargs.get('pk')
+        
+        # Eğer bu ID'ye sahip bir lokasyon yoksa 404 dön.
+        self.location_object = get_object_or_404(Location, pk=location_id)
+
+        # Sadece bu lokasyona ait verileri tarihleri sıralayarak getir.
+        return Historical.objects.filter(pulocation=self.location_object).order_by('-datetime')
+         
+    def get_context_data(self, **kwargs):
+        # Lokasyon objesini de ekleyelim
+        context = super().get_context_data(**kwargs)
+        context['location'] = self.location_object
+        return context
+
+def blank_historical_page(request):
+    """If user does not enter a location ID, displays this function."""
+    return render(request, "prediction_app/blank_location.html")
+
+
+class Date(FormView):
+    template_name = "prediction_app/date.html"
+    form_class = ShowLocationsBasedOnDate   # Hangi form class beni doğruluyor?
+
+    def form_valid(self, form):
+        target_date = form.cleaned_data["target_datetime"]
+        target_date = target_date.replace(minute=0, second=0, microsecond=0)    # verimiz tam saatler üzerine kurulu
+        records = Historical.objects.filter(datetime=target_date).select_related('pulocation').order_by('-trip_count')  # SQL JOIN
+
+        if not records.exists():
+            form.add_error(None, "Please select a date between 2015-2016")
+            return self.form_invalid(form)
+        
+        context = self.get_context_data(form=form)
+        context["records"] = records
+        context["target_date"] = target_date
+
+        return self.render_to_response(context)
