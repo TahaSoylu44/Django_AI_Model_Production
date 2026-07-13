@@ -62,16 +62,6 @@ class ShowLocationsBasedOnDate(forms.Form):
 
 class DriverForm(forms.Form):
     """Taxi sürücüsü tarafindan girilen veriler"""
-    driver_name = forms.CharField(
-        label="Name and Surname",
-        max_length=100,
-        required=True,
-        widget=forms.TextInput(attrs={
-            'class': 'form-control',
-            'placeholder': 'Örn: Taha Soylu'
-        })
-    )
-
     passenger_count = forms.IntegerField(
         label="Passenger Count",
         min_value=0

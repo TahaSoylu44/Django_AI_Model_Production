@@ -1,16 +1,14 @@
-from django.views.generic import FormView, DetailView, ListView
+from django.views.generic import FormView, DetailView, ListView, DeleteView, UpdateView
 from django.shortcuts import redirect
-from .forms import TripPredictionForm, ShowLocationsBasedOnDate, DriverForm, RegisterForm, DeleteUserForm
-from .models import Historical, Prediction, Location, DriverEntry
-from .preprocessing import build_dataframe, get_int_taxi_count
 from django.apps import apps
 import lightgbm as lgb
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse_lazy
 from django.contrib import messages
-from django.contrib.auth.models import User
-from django.contrib.auth import login, logout
 from django.contrib.auth.mixins import LoginRequiredMixin
+from prediction_app.forms import TripPredictionForm, ShowLocationsBasedOnDate, DriverForm
+from prediction_app.models import Historical, Prediction, Location, DriverEntry
+from prediction_app.preprocessing import build_dataframe, get_int_taxi_count
 
 class Home(FormView):
     template_name = "prediction_app/home.html"
@@ -154,58 +152,56 @@ class Entry(LoginRequiredMixin, FormView):
     success_url = reverse_lazy('prediction_app:home')   # form kaydedildikten sonra kullanıcının gideceği ekran
 
     def form_valid(self, form):
-        driver_name = form.cleaned_data["driver_name"]
         passenger_count = form.cleaned_data["passenger_count"]
+
+        if passenger_count == 0:
+            messages.warning(self.request, "The passenger_count cannot be 0")
+            return super().form_valid(form)
+
         pulocation = form.cleaned_data["location"]
         datetime = form.cleaned_data["datetime"]
 
         new_driver_entry = DriverEntry(
             pulocation=pulocation,
             datetime=datetime,
-            driver_name=driver_name,
+            driver=self.request.user,
             passenger_count=passenger_count
         )
 
         new_driver_entry.save() # veri tabanına kaydet, signal çalıştır.
         formatted_date = datetime.strftime("%B %d, %Y - %H:%M") # print attığımızda güzel gözüksün.
-        messages.success(self.request, f"Trip recorded successfully for {driver_name} on {formatted_date}")
+        messages.success(self.request, f"Trip recorded successfully for {self.request.user.username} on {formatted_date}")
         return super().form_valid(form)
     
-class UserRegistration(FormView):
-    template_name = "prediction_app/register.html"
-    form_class = RegisterForm
-
-    success_url = reverse_lazy('prediction_app:home')   # form kaydedildikten sonra kullanıcının gideceği ekran
-
-    def form_valid(self, form):
-        user_name = form.cleaned_data["username"]
-        name = form.cleaned_data["name"]
-        surname = form.cleaned_data["surname"]
-        mail = form.cleaned_data["mail"]
-        password = form.cleaned_data["password"]
-
-        new_user = User.objects.create_user( # yeni kullanıcı oluştur.
-            username=user_name,
-            first_name=name,
-            last_name=surname,
-            email=mail,
-            password=password
-        )
-
-        login(self.request, new_user)   # kullanıcı başarıyla oluşturulursa sisteme girsin.
-        messages.success(self.request, f"You successfully registered {user_name}")
-        return super().form_valid(form)
-    
-class DeleteUser(LoginRequiredMixin, FormView):
-    template_name = "prediction_app/delete_user.html"
-    success_url = reverse_lazy('prediction_app:home')
-    form_class = DeleteUserForm
+class DeleteDriverEntry(LoginRequiredMixin, DeleteView):
+    model = DriverEntry
+    success_url = reverse_lazy("list_user_log")
     login_url = "/login/"
 
-    def form_valid(self, form):
-        user = self.request.user
-        logout(self.request)
-        user.delete()
-
-        messages.success(self.request, "The account successfully deleted.")
+    def get_queryset(self):
+        return self.request.user.logs.order_by("-created_at")
+    
+    def form_valid(self, form): # form_class = BaseDeleteView
+        messages.success(self.request, "The entry deleted successfully")
         return super().form_valid(form)
+    
+class UpdateDriverEntry(LoginRequiredMixin, UpdateView):
+    template_name = "prediction_app/update_entry.html"
+    model = DriverEntry
+    success_url = reverse_lazy("list_user_log")
+    login_url = "/login/"
+    fields = ["pulocation", "datetime", "passenger_count"]
+
+    def get_queryset(self):
+        return self.request.user.logs.order_by("-created_at")
+
+    def form_valid(self, form):
+        passenger_count = form.cleaned_data["passenger_count"]
+
+        if passenger_count == 0:
+            self.object.delete()
+            messages.warning(self.request, message="The passenger_count set to 0, the entry deleted!")
+            return super().form_valid(form)
+        else:
+            messages.success(self.request, "The entry updated successfully")
+            return super().form_valid(form)

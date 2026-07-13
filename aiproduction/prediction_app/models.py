@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 class Location(models.Model):
     pulocation_id = models.PositiveIntegerField(primary_key=True)
@@ -27,12 +28,12 @@ class Prediction(models.Model):
 class DriverEntry(models.Model):
     pulocation = models.ForeignKey(Location, on_delete=models.CASCADE)
     datetime = models.DateTimeField(db_index=True)
-    driver_name = models.CharField(max_length=100)
     passenger_count = models.PositiveIntegerField(default=1)
     created_at = models.DateTimeField(auto_now_add=True)
+    driver = models.ForeignKey(User, on_delete=models.CASCADE, related_name="logs")
 
     class Meta:
         db_table = "driver_table_entry" # Tablo ismini kendim belirledim
 
     def __str__(self):
-        return f"{self.driver_name} - Location {self.pulocation.pulocation_id} ({self.datetime})"
+        return f"{self.driver.username} - Location {self.pulocation.pulocation_id} ({self.datetime})"

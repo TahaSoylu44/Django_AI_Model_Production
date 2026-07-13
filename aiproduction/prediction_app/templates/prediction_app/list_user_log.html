@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Trip Logs</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>body { background-color: #f8f9fa; }</style>
+</head>
+<body>
+    <div class="container mt-4 mb-5">
+        
+        <div class="mb-4">
+            <a href="{% url 'prediction_app:home' %}" class="btn btn-outline-dark fw-bold shadow-sm">&larr; Back to Dashboard</a>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
+                    <strong>Info:</strong> {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="card shadow border-0 rounded-lg">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
+                <h4 class="mb-0"><i class="bi bi-journal-text me-2 text-info"></i>My Trip Logs</h4>
+                <span class="badge bg-light text-dark fs-6">{{ page_obj.paginator.count }} Total Entries</span>
+            </div>
+            
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped align-middle text-center mb-0">
+                        <thead class="table-secondary">
+                            <tr>
+                                <th>#</th>
+                                <th>Trip Date & Time</th>
+                                <th>Location ID</th>
+                                <th>Passengers</th>
+                                <th>Logged At</th>
+                                <th>Actions</th> </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in user_log %}
+                            <tr>
+                                <td><strong>{{ forloop.counter0|add:page_obj.start_index }}</strong></td>
+                                <td class="fw-bold">{{ entry.datetime|date:"d M Y, H:i" }}</td>
+                                <td><span class="badge bg-primary px-3 py-2">Zone {{ entry.pulocation.pulocation_id }}</span></td>
+                                <td>{{ entry.passenger_count }} <i class="bi bi-person-fill text-muted"></i></td>
+                                <td class="text-muted small">{{ entry.created_at|date:"d M Y, H:i" }}</td>
+                                <td>
+                                    <button type="button" 
+                                            class="btn btn-outline-danger btn-sm" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#deleteModal"
+                                            data-delete-url="{% url 'delete_log' entry.pk %}">
+                                        <i class="bi bi-trash-fill"></i>
+                                    </button>
+                                </td>
+                                <td>
+                                    <a href="{% url 'update_log' entry.pk %}" class="btn btn-outline-primary btn-sm me-1 shadow-sm" title="Edit Log">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </a>
+
+                                    <button type="button" 
+                                            class="btn btn-outline-danger btn-sm shadow-sm" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#deleteModal"
+                                            data-delete-url="{% url 'delete_log' entry.pk %}"
+                                            title="Delete Log">
+                                        <i class="bi bi-trash-fill"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-5">
+                                    <i class="bi bi-clipboard-x fs-1 text-muted d-block mb-3"></i>
+                                    <h5 class="text-muted">You haven't logged any trips yet.</h5>
+                                    <a href="{% url 'prediction_app:entry' %}" class="btn btn-success mt-3 shadow-sm fw-bold">Log Your First Trip</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            {% if is_paginated %}
+            <div class="card-footer bg-white py-3">
+                <nav>
+                    <ul class="pagination justify-content-center mb-0">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item"><a class="page-link text-dark fw-bold" href="?page={{ page_obj.previous_page_number }}">&laquo; Previous</a></li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">&laquo; Previous</span></li>
+                        {% endif %}
+                        <li class="page-item active"><span class="page-link bg-dark border-dark">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+                        {% if page_obj.has_next %}
+                            <li class="page-item"><a class="page-link text-dark fw-bold" href="?page={{ page_obj.next_page_number }}">Next &raquo;</a></li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">Next &raquo;</span></li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+            
+        </div>
+    </div>
+
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-danger">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title fw-bold" id="deleteModalLabel"><i class="bi bi-exclamation-triangle-fill me-2"></i>Confirm Deletion</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <p class="fs-5 mb-1">Are you sure you want to delete this trip log?</p>
+                    <p class="text-muted small">This action cannot be undone.</p>
+                </div>
+                <div class="modal-footer d-flex justify-content-between">
+                    <button type="button" class="btn btn-secondary px-4 fw-bold" data-bs-dismiss="modal">Cancel</button>
+                    <form id="deleteForm" method="POST" action="">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger px-4 fw-bold shadow-sm">Yes, Delete It!</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Sayfa yüklendiğinde Modalı Dinlemeye Başla
+        const deleteModal = document.getElementById('deleteModal');
+        deleteModal.addEventListener('show.bs.modal', function (event) {
+            // Hangi butona tıklandığını yakala
+            const button = event.relatedTarget;
+            // Butonun içindeki data-delete-url bilgisini (hangi ID'nin silineceğini) çek
+            const url = button.getAttribute('data-delete-url');
+            // Modalın içindeki boş formun rotasını bu URL ile değiştir
+            const form = document.getElementById('deleteForm');
+            form.action = url;
+        });
+    </script>
+</body>
+</html>
