@@ -3,19 +3,64 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NYC Taxi Count Predictor (2015 - 2016)</title>
+    <title>NYC Taxi ML Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
     <style>
-        body { background-color: #f8f9fa; }
+        body { background-color: #f4f6f9; }
         .form-control, .form-select { margin-bottom: 15px; }
         label { font-weight: bold; margin-bottom: 5px; } 
+        
+        /* Kartların üzerine gelince hafifçe yukarı kalkma animasyonu */
+        .feature-card { transition: transform 0.2s, box-shadow 0.2s; }
+        .feature-card:hover { 
+            transform: translateY(-5px); 
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; 
+        }
     </style>
 </head>
 <body>
-    <div class="container mt-5">
+
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm sticky-top">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="{% url 'prediction_app:home' %}">NYC Taxi ML</a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item"><a class="nav-link active" href="{% url 'prediction_app:home' %}">Dashboard</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'prediction_app:entry' %}">Log Trip</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'prediction_app:date' %}">Date Explorer</a></li>
+                    <li class="nav-item"><a class="nav-link" href="{% url 'prediction_app:blank_historical' %}">Locations</a></li>
+                </ul>
+
+                <div class="ms-auto d-flex align-items-center mt-2 mt-lg-0">
+                    {% if user.is_authenticated %}
+                        <span class="text-light me-3">Welcome, <strong>{{ user.username }}</strong></span>
+                        <a href="{% url 'delete_user' %}" class="btn btn-danger btn-sm fw-bold me-3 shadow-sm">Delete Account</a>
+                        <form method="post" action="{% url 'logout' %}" class="m-0 p-0">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-light btn-sm fw-bold">Log out</button>
+                        </form>
+                    {% else %}
+                        <a href="{% url 'login' %}" class="btn btn-outline-light btn-sm fw-bold me-2">Log in</a>
+                        <a href="{% url 'register' %}" class="btn btn-primary btn-sm fw-bold">Sign up</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4 mb-5">
+        
         {% if messages %}
-            <div class="row justify-content-center mt-3 mb-3">
-                <div class="col-md-8">
+            <div class="row justify-content-center mb-4">
+                <div class="col-md-10">
                     {% for message in messages %}
                         <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
                             <strong>System Message:</strong> {{ message }}
@@ -25,13 +70,23 @@
                 </div>
             </div>
         {% endif %}
-        <div class="row justify-content-center">
-            <div class="col-md-6">
-                <div class="card shadow-lg border-0 rounded-lg mt-5">
-                    <div class="card-header bg-dark text-white text-center">
-                        <h3 class="font-weight-light my-2">Predictor</h3>
+
+        <div class="row mb-4">
+            <div class="col-12 text-center">
+                <h2 class="fw-bold text-dark">Data Engineering & ML Dashboard</h2>
+                <p class="text-muted">Manage trips, explore historical data, and run AI predictions from a single hub.</p>
+            </div>
+        </div>
+        
+        <div class="row g-4">
+            
+            <div class="col-lg-7">
+                <div class="card shadow-lg border-0 rounded-lg h-100">
+                    <div class="card-header bg-primary text-white text-center py-3">
+                        <h4 class="mb-0"><i class="bi bi-cpu text-warning me-2"></i>AI Trip Predictor</h4>
                     </div>
-                    <div class="card-body">
+                    <div class="card-body p-4">
+                        <p class="text-muted mb-4 text-center">Select a location and time to forecast the upcoming taxi demand using the trained LightGBM model.</p>
                         
                         <form method="POST" action="">
                             {% csrf_token %}
@@ -48,15 +103,68 @@
                                 {{ form.as_p }}
                             </div>
                             
-                            <div class="d-grid gap-2 mt-4">
-                                <button class="btn btn-primary btn-lg" type="submit">Submit</button>
+                            <div class="d-grid mt-4">
+                                <button class="btn btn-primary btn-lg fw-bold" type="submit">Run Prediction</button>
                             </div>
                         </form>
-                        
                     </div>
                 </div>
             </div>
+
+            <div class="col-lg-5">
+                <div class="row g-3">
+                    
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0 feature-card h-100">
+                            <div class="card-body d-flex align-items-center p-3">
+                                <div class="bg-success text-white rounded-circle p-3 me-3 text-center d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                                    <i class="bi bi-car-front-fill fs-4"></i>
+                                </div>
+                                <div>
+                                    <h5 class="fw-bold mb-1">Log a New Trip</h5>
+                                    <p class="text-muted small mb-2">Simulate real-time data entry and trigger the recalculation pipeline.</p>
+                                    <a href="{% url 'prediction_app:entry' %}" class="btn btn-outline-success btn-sm fw-bold">Go to Data Entry &rarr;</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0 feature-card h-100">
+                            <div class="card-body d-flex align-items-center p-3">
+                                <div class="bg-warning text-dark rounded-circle p-3 me-3 text-center d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                                    <i class="bi bi-calendar-check-fill fs-4"></i>
+                                </div>
+                                <div>
+                                    <h5 class="fw-bold mb-1">Date Explorer</h5>
+                                    <p class="text-muted small mb-2">View the most active locations and trip counts for a specific date.</p>
+                                    <a href="{% url 'prediction_app:date' %}" class="btn btn-outline-warning text-dark btn-sm fw-bold">Analyze by Date &rarr;</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="card shadow-sm border-0 feature-card h-100">
+                            <div class="card-body d-flex align-items-center p-3">
+                                <div class="bg-info text-white rounded-circle p-3 me-3 text-center d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                                    <i class="bi bi-geo-alt-fill fs-4"></i>
+                                </div>
+                                <div>
+                                    <h5 class="fw-bold mb-1">Location History</h5>
+                                    <p class="text-muted small mb-2">Search by Location ID to view the complete timeseries metrics.</p>
+                                    <a href="{% url 'prediction_app:blank_historical' %}" class="btn btn-outline-info btn-sm fw-bold">Explore Locations &rarr;</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
         </div>
     </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

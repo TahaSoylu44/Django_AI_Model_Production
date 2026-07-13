@@ -1,6 +1,6 @@
 from django.views.generic import FormView, DetailView, ListView
 from django.shortcuts import redirect
-from .forms import TripPredictionForm, ShowLocationsBasedOnDate, DriverForm
+from .forms import TripPredictionForm, ShowLocationsBasedOnDate, DriverForm, RegisterForm, DeleteUserForm
 from .models import Historical, Prediction, Location, DriverEntry
 from .preprocessing import build_dataframe, get_int_taxi_count
 from django.apps import apps
@@ -8,6 +8,9 @@ import lightgbm as lgb
 from django.shortcuts import get_object_or_404, render
 from django.urls import reverse_lazy
 from django.contrib import messages
+from django.contrib.auth.models import User
+from django.contrib.auth import login, logout
+from django.contrib.auth.mixins import LoginRequiredMixin
 
 class Home(FormView):
     template_name = "prediction_app/home.html"
@@ -143,9 +146,10 @@ class Date(FormView):
 
         return self.render_to_response(context)
     
-class Entry(FormView):
+class Entry(LoginRequiredMixin, FormView):
     template_name = "prediction_app/new_entry.html"
     form_class = DriverForm
+    login_url = "/login/"
 
     success_url = reverse_lazy('prediction_app:home')   # form kaydedildikten sonra kullanıcının gideceği ekran
 
@@ -165,4 +169,43 @@ class Entry(FormView):
         new_driver_entry.save() # veri tabanına kaydet, signal çalıştır.
         formatted_date = datetime.strftime("%B %d, %Y - %H:%M") # print attığımızda güzel gözüksün.
         messages.success(self.request, f"Trip recorded successfully for {driver_name} on {formatted_date}")
+        return super().form_valid(form)
+    
+class UserRegistration(FormView):
+    template_name = "prediction_app/register.html"
+    form_class = RegisterForm
+
+    success_url = reverse_lazy('prediction_app:home')   # form kaydedildikten sonra kullanıcının gideceği ekran
+
+    def form_valid(self, form):
+        user_name = form.cleaned_data["username"]
+        name = form.cleaned_data["name"]
+        surname = form.cleaned_data["surname"]
+        mail = form.cleaned_data["mail"]
+        password = form.cleaned_data["password"]
+
+        new_user = User.objects.create_user( # yeni kullanıcı oluştur.
+            username=user_name,
+            first_name=name,
+            last_name=surname,
+            email=mail,
+            password=password
+        )
+
+        login(self.request, new_user)   # kullanıcı başarıyla oluşturulursa sisteme girsin.
+        messages.success(self.request, f"You successfully registered {user_name}")
+        return super().form_valid(form)
+    
+class DeleteUser(LoginRequiredMixin, FormView):
+    template_name = "prediction_app/delete_user.html"
+    success_url = reverse_lazy('prediction_app:home')
+    form_class = DeleteUserForm
+    login_url = "/login/"
+
+    def form_valid(self, form):
+        user = self.request.user
+        logout(self.request)
+        user.delete()
+
+        messages.success(self.request, "The account successfully deleted.")
         return super().form_valid(form)
