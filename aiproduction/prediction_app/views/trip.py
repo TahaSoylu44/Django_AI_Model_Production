@@ -6,21 +6,22 @@ from django.shortcuts import get_object_or_404, render
 from django.urls import reverse_lazy
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
-from prediction_app.forms import TripPredictionForm, ShowLocationsBasedOnDate, DriverForm
-from prediction_app.models import Historical, Prediction, Location, DriverEntry
+from prediction_app.forms.trip_based import TripPredictionForm, ShowLocationsBasedOnDate, DriverForm
+from prediction_app.models.trip_based import Historical, Prediction, Location, DriverEntry
 from prediction_app.preprocessing import build_dataframe, get_int_taxi_count
 from prediction_app.services import reconstruct_pipeline
 from django.db import transaction
 from django.db.models import F
+from prediction_app.permissions import AdminOrDriverCanAccess
 
-class Home(FormView):
+class Home(LoginRequiredMixin, FormView):
+    login_url = "/login/"
     template_name = "prediction_app/home.html"
     form_class = TripPredictionForm
 
     def form_valid(self, form): # eğer gelen request, tanımladığımız form class ile uyumlu ise otomatik çalışır.
         location = form.cleaned_data['location']
         target_date = form.cleaned_data['target_datetime']
-        user_name = form.cleaned_data["predictor_name"]
 
         target_date = target_date.replace(minute=0, second=0, microsecond=0)    # verimiz tam saatler üzerine kurulu
 
@@ -59,18 +60,20 @@ class Home(FormView):
                 pulocation = location,
                 datetime = target_date,
                 predValue = prediction,
-                predictor_name = user_name
+                predictor = self.request.user
             )
 
             return redirect('prediction_app:prediction_detail', pk=prediction_object.pk)
         
 
-class HistoricalDetailView(DetailView):
+class HistoricalDetailView(LoginRequiredMixin, DetailView):
     model = Historical
     template_name = "prediction_app/historical_result.html"
     context_object_name = "record"
+    login_url = "/login/"
 
-class PredictionDetailView(DetailView):
+class PredictionDetailView(LoginRequiredMixin, DetailView):
+    login_url = "/login/"
     model = Prediction
     template_name = "prediction_app/prediction_result.html"
     context_object_name = "prediction_object"
@@ -92,7 +95,8 @@ class PredictionDetailView(DetailView):
     #! istediğimden "get_context_data" fonksiyonunu override edip "record" historical
     #! objesini de HTML'e göndereceğim.
 
-class GeneralHistoricalView(ListView):
+class GeneralHistoricalView(LoginRequiredMixin, ListView):
+    login_url = "/login/"
     model = Historical
     template_name = "prediction_app/general_historical_template.html"
     context_object_name = "records"
@@ -128,9 +132,10 @@ def blank_historical_page(request):
     return render(request, "prediction_app/blank_location.html")
 
 
-class Date(FormView):
+class Date(LoginRequiredMixin, FormView):
     template_name = "prediction_app/date.html"
     form_class = ShowLocationsBasedOnDate   # Hangi form class beni doğruluyor?
+    login_url = "/login/"
 
     def form_valid(self, form):
         target_date = form.cleaned_data["target_datetime"]
@@ -147,7 +152,7 @@ class Date(FormView):
 
         return self.render_to_response(context)
     
-class Entry(LoginRequiredMixin, FormView):
+class Entry(AdminOrDriverCanAccess, LoginRequiredMixin, FormView):
     template_name = "prediction_app/new_entry.html"
     form_class = DriverForm
     login_url = "/login/"
@@ -179,7 +184,7 @@ class Entry(LoginRequiredMixin, FormView):
         messages.success(self.request, f"Trip recorded successfully for {self.request.user.username} on {formatted_date}")
         return super().form_valid(form)
     
-class DeleteDriverEntry(LoginRequiredMixin, DeleteView):
+class DeleteDriverEntry(AdminOrDriverCanAccess, LoginRequiredMixin, DeleteView):
     model = DriverEntry
     success_url = reverse_lazy("list_user_log")
     login_url = "/login/"
@@ -191,7 +196,7 @@ class DeleteDriverEntry(LoginRequiredMixin, DeleteView):
         messages.success(self.request, "The entry deleted successfully")
         return super().form_valid(form)
     
-class UpdateDriverEntry(LoginRequiredMixin, UpdateView):
+class UpdateDriverEntry(AdminOrDriverCanAccess, LoginRequiredMixin, UpdateView):
     template_name = "prediction_app/update_entry.html"
     model = DriverEntry
     success_url = reverse_lazy("list_user_log")

@@ -1,6 +1,6 @@
 import pandas as pd
 from datetime import timedelta
-from .models import Historical, Location
+from prediction_app.models.trip_based import Historical, Location
 import datetime
 
 def reconstruct_pipeline(location_object: Location, updated_datetime: datetime):

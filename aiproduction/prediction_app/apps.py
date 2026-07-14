@@ -11,7 +11,7 @@ class PredictionAppConfig(AppConfig):
     model = None    # modeli tutacağımız değişken
 
     def ready(self):    # sadece bir kez çalış ve modeli hafızaya al
-        model_path = os.path.join(settings.BASE_DIR, 'prediction_app', 'models', 'lgb_model.pkl')
+        model_path = os.path.join(settings.BASE_DIR, 'prediction_app', 'ai_models', 'lgb_model.pkl')
         if os.path.exists(model_path):
             PredictionAppConfig.model = joblib.load(model_path)
 

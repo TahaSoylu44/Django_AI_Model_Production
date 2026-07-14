@@ -17,7 +17,7 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from django.contrib.auth import views as auth_views
-from prediction_app.views.user import UserRegistration, DeleteUser, ListUserLog
+from prediction_app.views.user import UserRegistration, DeleteUser, ListUserLog, ListTaxiDriver, DeleteTaxiDriver
 from prediction_app.views.trip import DeleteDriverEntry, UpdateDriverEntry
 
 urlpatterns = [
@@ -29,5 +29,7 @@ urlpatterns = [
     path("delete_account/", DeleteUser.as_view(), name="delete_account"),
     path("list_user_log/", ListUserLog.as_view(), name="list_user_log"),
     path("log/<int:pk>/delete/", DeleteDriverEntry.as_view(), name="delete_log"),
-    path("log/<int:pk>/update/", UpdateDriverEntry.as_view(), name="update_log")
+    path("log/<int:pk>/update/", UpdateDriverEntry.as_view(), name="update_log"),
+    path("list_taxi_driver/", ListTaxiDriver.as_view(), name="list_taxi_driver"),
+    path("driver/<int:pk>/delete/", DeleteTaxiDriver.as_view(), name="delete_driver")
 ]

@@ -1,6 +1,6 @@
 import pandas as pd
 from django.core.management.base import BaseCommand
-from prediction_app.models import Location, Historical
+from prediction_app.models.trip_based import Location, Historical
 
 class Command(BaseCommand): # python manage.py ile çalıştırılabilir hale gel.
     help = 'Load the dataframe into the database'

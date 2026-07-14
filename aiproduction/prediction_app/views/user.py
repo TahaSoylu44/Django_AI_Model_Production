@@ -1,12 +1,14 @@
-from django.views.generic import FormView, ListView
-from prediction_app.forms import RegisterForm, DeleteUserForm
+from django.views.generic import FormView, ListView, DeleteView
+from prediction_app.forms.user_based import RegisterForm, DeleteUserForm
 import lightgbm as lgb
 from django.urls import reverse_lazy
 from django.contrib import messages
 from django.contrib.auth.models import User
 from django.contrib.auth import login, logout
 from django.contrib.auth.mixins import LoginRequiredMixin
-from prediction_app.models import DriverEntry
+from prediction_app.models.trip_based import DriverEntry
+from prediction_app.permissions import AdminCanAccess
+from prediction_app.models.user_based import Taxi_Driver
 
 class UserRegistration(FormView):
     template_name = "prediction_app/register.html"
@@ -57,3 +59,25 @@ class ListUserLog(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         return self.request.user.logs.order_by("-created_at")
+    
+class ListTaxiDriver(AdminCanAccess, LoginRequiredMixin, ListView):
+    model = Taxi_Driver
+    template_name = "prediction_app/list_taxi_driver.html"
+    context_object_name = "driver_list"
+    login_url = "/login/"
+    paginate_by = 50
+
+    def get_queryset(self):
+        return Taxi_Driver.objects.select_related("user").all().order_by("user__username")
+    
+class DeleteTaxiDriver(AdminCanAccess, LoginRequiredMixin, DeleteView):
+    model = Taxi_Driver
+    success_url = reverse_lazy("list_taxi_driver")
+    login_url = "/login/"
+
+    def get_queryset(self):
+        return Taxi_Driver.objects.select_related("user").all().order_by("user__username")
+    
+    def form_valid(self, form):
+        messages.success(self.request, "The taxi driver deleted!")
+        return super().form_valid(form)

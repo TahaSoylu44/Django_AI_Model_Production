@@ -1,5 +1,6 @@
 from django.db import models
 from django.contrib.auth.models import User
+from prediction_app.models.user_based import Taxi_Driver
 
 class Location(models.Model):
     pulocation_id = models.PositiveIntegerField(primary_key=True)
@@ -23,7 +24,7 @@ class Prediction(models.Model):
     datetime = models.DateTimeField(db_index=True)
     predValue = models.PositiveIntegerField()
     created_at = models.DateTimeField(auto_now_add=True)    # Bu tahmin ne zaman çalıştırıldı?
-    predictor_name = models.CharField(max_length=100, default="Anonim")
+    predictor = models.ForeignKey(User, on_delete=models.CASCADE)
 
 class DriverEntry(models.Model):
     pulocation = models.ForeignKey(Location, on_delete=models.CASCADE)

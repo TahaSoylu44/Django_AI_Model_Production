@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Taxi Driver Management</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>body { background-color: #f8f9fa; }</style>
+</head>
+<body>
+    <div class="container mt-5 mb-5">
+        
+        <div class="mb-4">
+            <a href="{% url 'prediction_app:home' %}" class="btn btn-outline-dark fw-bold shadow-sm">&larr; Back to Admin Panel</a>
+        </div>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show shadow-sm" role="alert">
+                    <strong>Info:</strong> {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="card shadow border-0 rounded-lg">
+            <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center py-3">
+                <h4 class="mb-0"><i class="bi bi-people-fill me-2 text-warning"></i>Registered Taxi Drivers</h4>
+                <span class="badge bg-light text-dark fs-6">{{ page_obj.paginator.count }} Total Drivers</span>
+            </div>
+            
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover table-striped align-middle text-center mb-0">
+                        <thead class="table-secondary">
+                            <tr>
+                                <th>#</th>
+                                <th>Driver ID</th>
+                                <th>Username</th>
+                                <th>Email Address</th>
+                                <th>Date Joined</th>
+                                <th>Actions</th> </tr>
+                        </thead>
+                        <tbody>
+                            {% for driver in driver_list %}
+                            <tr>
+                                <td><strong>{{ forloop.counter0|add:page_obj.start_index }}</strong></td>
+                                <td><span class="badge bg-primary px-3 py-2">ID: {{ driver.driver_id }}</span></td>
+                                <td class="fw-bold text-start"><i class="bi bi-person-badge text-muted me-2"></i>{{ driver.user.username }}</td>
+                                <td class="text-start">{{ driver.user.email|default:"No Email Provided" }}</td>
+                                <td class="text-muted small">{{ driver.user.date_joined|date:"d M Y" }}</td>
+                                <td>
+                                    <button type="button" 
+                                            class="btn btn-outline-danger btn-sm shadow-sm" 
+                                            data-bs-toggle="modal" 
+                                            data-bs-target="#deleteDriverModal"
+                                            data-delete-url="{% url 'delete_driver' driver.pk %}">
+                                        <i class="bi bi-trash-fill"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="6" class="text-center py-5">
+                                    <i class="bi bi-person-x fs-1 text-muted d-block mb-3"></i>
+                                    <h5 class="text-muted">No taxi drivers found in the system.</h5>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            {% if is_paginated %}
+            <div class="card-footer bg-white py-3">
+                <nav>
+                    <ul class="pagination justify-content-center mb-0">
+                        {% if page_obj.has_previous %}
+                            <li class="page-item"><a class="page-link text-dark fw-bold" href="?page={{ page_obj.previous_page_number }}">&laquo; Prev</a></li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">&laquo; Prev</span></li>
+                        {% endif %}
+                        
+                        <li class="page-item active"><span class="page-link bg-dark border-dark">Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span></li>
+                        
+                        {% if page_obj.has_next %}
+                            <li class="page-item"><a class="page-link text-dark fw-bold" href="?page={{ page_obj.next_page_number }}">Next &raquo;</a></li>
+                        {% else %}
+                            <li class="page-item disabled"><span class="page-link">Next &raquo;</span></li>
+                        {% endif %}
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+            
+        </div>
+    </div>
+
+    <div class="modal fade" id="deleteDriverModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-danger">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title fw-bold" id="deleteModalLabel"><i class="bi bi-exclamation-triangle-fill me-2"></i>Confirm Deletion</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body text-center py-4">
+                    <p class="fs-5 mb-1">Are you sure you want to delete this taxi driver?</p>
+                    <p class="text-danger small fw-bold mt-2">Warning: This action will permanently remove the driver profile!</p>
+                </div>
+                <div class="modal-footer d-flex justify-content-between">
+                    <button type="button" class="btn btn-secondary px-4 fw-bold" data-bs-dismiss="modal">Cancel</button>
+                    <form id="deleteDriverForm" method="POST" action="">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger px-4 fw-bold shadow-sm">Yes, Delete Driver!</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        const deleteModal = document.getElementById('deleteDriverModal');
+        if (deleteModal) {
+            deleteModal.addEventListener('show.bs.modal', function (event) {
+                // Tıklanan butonu yakala
+                const button = event.relatedTarget;
+                // Butondan "data-delete-url" bilgisini (pk) çek
+                const url = button.getAttribute('data-delete-url');
+                // Modalın içindeki boş formun action adresini güncelle
+                const form = document.getElementById('deleteDriverForm');
+                form.action = url;
+            });
+        }
+    </script>
+</body>
+</html>
