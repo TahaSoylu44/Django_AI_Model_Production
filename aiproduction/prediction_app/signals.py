@@ -2,6 +2,7 @@ from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from .models import DriverEntry, Historical
 from .services import reconstruct_pipeline
+from django.db.models import F
 
 @receiver(post_save, sender=DriverEntry)    # eğer yeni bir DriverEntry .save() edilirse otomatik çalış!
 def update_historical_feature_add(sender, instance, created, **kwargs):
@@ -15,7 +16,7 @@ def update_historical_feature_add(sender, instance, created, **kwargs):
             defaults={"trip_count": 0}
         )
 
-        historical_record.trip_count += 1   # yeni kayıt alındı
+        historical_record.trip_count = F("trip_count") + 1   # yeni kayıt alındı
         historical_record.save()
 
         reconstruct_pipeline(location_object=instance.pulocation, updated_datetime=target_datetime)

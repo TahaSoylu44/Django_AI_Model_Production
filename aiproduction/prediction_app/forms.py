@@ -168,34 +168,6 @@ class DeleteUserForm(forms.Form):
             })
         )
 
-        name = forms.CharField(
-            label="Name",
-            max_length=100,
-            required=True,
-            widget=forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Örn: Taha'
-            })
-        )
-
-        surname = forms.CharField(
-            label="Surname",
-            max_length=100,
-            required=True,
-            widget=forms.TextInput(attrs={
-                'class': 'form-control',
-                'placeholder': 'Örn: Soylu'
-            })
-        )
-
-        mail = forms.EmailField(
-            label="Email",
-            required=True,
-            widget=forms.EmailInput(attrs={
-                'class': 'form-control'
-            })
-        )
-
         password = forms.CharField(
             label="Password",
             max_length=100,
@@ -204,14 +176,6 @@ class DeleteUserForm(forms.Form):
                 'class': 'form-control'
             })
         )
-
-        def clean_mail(self):   
-            """clean_<fieldname> fonksiyonu otomatik çalişarak email doğrulamasi yapar."""
-            mail = self.cleaned_data["mail"]
-
-            if User.objects.filter(email=mail).exists():
-                return mail
-            raise ValidationError("A user having this email cannot be found!")
         
         def clean_username(self):
             """clean_<fieldname> fonksiyonu otomatik çalişarak username doğrulamasi yapar."""

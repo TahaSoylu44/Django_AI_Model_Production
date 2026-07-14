@@ -9,6 +9,9 @@ from django.contrib.auth.mixins import LoginRequiredMixin
 from prediction_app.forms import TripPredictionForm, ShowLocationsBasedOnDate, DriverForm
 from prediction_app.models import Historical, Prediction, Location, DriverEntry
 from prediction_app.preprocessing import build_dataframe, get_int_taxi_count
+from prediction_app.services import reconstruct_pipeline
+from django.db import transaction
+from django.db.models import F
 
 class Home(FormView):
     template_name = "prediction_app/home.html"
@@ -155,8 +158,11 @@ class Entry(LoginRequiredMixin, FormView):
         passenger_count = form.cleaned_data["passenger_count"]
 
         if passenger_count == 0:
-            messages.warning(self.request, "The passenger_count cannot be 0")
-            return super().form_valid(form)
+            form.add_error("passenger_count", "The passenger count cannot be 0")
+            return self.form_invalid(form)
+        elif passenger_count > 6:
+            form.add_error("passenger_count", "The passenger count cannot be more than 6")
+            return self.form_invalid(form)
 
         pulocation = form.cleaned_data["location"]
         datetime = form.cleaned_data["datetime"]
@@ -201,7 +207,34 @@ class UpdateDriverEntry(LoginRequiredMixin, UpdateView):
         if passenger_count == 0:
             self.object.delete()
             messages.warning(self.request, message="The passenger_count set to 0, the entry deleted!")
-            return super().form_valid(form)
+            return redirect("list_user_log")
+        elif passenger_count > 6:
+            form.add_error("passenger_count", "The passenger count cannot be more than 6")
+            return self.form_invalid(form)
         else:
+            old_entry = get_object_or_404(DriverEntry, pk=self.object.pk)
+            old_location = old_entry.pulocation
+            old_datetime = old_entry.datetime
+
+            new_location = form.cleaned_data["pulocation"]
+            new_datetime = form.cleaned_data["datetime"]
+            new_datetime_modified = new_datetime.replace(minute=0, second=0, microsecond=0)
+
+            with transaction.atomic():  # database consistency
+                if (old_location != new_location) or (old_datetime != new_datetime_modified):    # Lokasyon veya Tarih değişti.
+                    old_historical = get_object_or_404(Historical, pulocation=old_location, datetime=old_datetime.replace(minute=0, second=0, microsecond=0))
+
+                    if old_historical.trip_count > 0:
+                        old_historical.trip_count = F("trip_count") - 1  # Eski kayıt 1 azaltıldı. SQL Level, for multi user applications
+                        old_historical.save()
+
+                        reconstruct_pipeline(location_object=old_location, updated_datetime=old_datetime)
+
+                    new_entry = get_object_or_404(Historical, pulocation=new_location, datetime=new_datetime_modified)
+
+                    new_entry.trip_count = F("trip_count") + 1   # Yeni kayıt 1 arttırıldı. SQL Level, for multi user applications
+                    new_entry.save()
+                    reconstruct_pipeline(location_object=new_location, updated_datetime=new_datetime_modified)
+
             messages.success(self.request, "The entry updated successfully")
             return super().form_valid(form)
