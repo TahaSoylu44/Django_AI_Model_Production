@@ -23,6 +23,8 @@ docker pull tahasoylu44/nyc-taxi-prediction:v1
 docker-compose up -d
 ​```
 
+WARNING: You need a "compose.yml" file to use this container.
+
 After the docker run:
 ​```
 http://localhost:8000/predict
