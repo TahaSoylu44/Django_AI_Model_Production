@@ -9,21 +9,21 @@ In this project, I wanted to deploy my taxi count predictor model using Django.
 - Generic based views implemented and set the connection between HTML pages
 - Finally, the project is dockerized.
 
-## Docker ile Çalıştırma
+## Docker
 
-Proje Docker Hub üzerinden yayınlanmıştır: [DOCKER_HUB_LINKI](https://hub.docker.com/repository/docker/tahasoylu44/nyc-taxi-prediction/)
+The project released on Docker Hub: [DOCKER_HUB_LINKI](https://hub.docker.com/repository/docker/tahasoylu44/nyc-taxi-prediction/)
 
-### Image'ı çekmek için:
+### For the Image
 ​```bash
 docker pull tahasoylu44/nyc-taxi-prediction:v1
 ​```
 
-### Docker Compose ile (varsa):
+### Docker Compose
 ​```bash
 docker-compose up -d
 ​```
 
-Uygulama ayağa kalktıktan sonra tarayıcıdan şu adrese giderek erişebilirsin:
+After the docker run:
 ​```
 http://localhost:8000/predict
 ​```
