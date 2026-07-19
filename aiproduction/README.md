@@ -27,3 +27,8 @@ After the docker run:
 ​```
 http://localhost:8000/predict
 ​```
+
+
+
+https://github.com/user-attachments/assets/8308ae32-545e-4483-9878-816bff4a7597
+
