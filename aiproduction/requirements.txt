@@ -1,10 +1,13 @@
 asgiref==3.11.1
 Django==6.0.6
+gunicorn==26.0.0
 joblib==1.5.3
 lightgbm==4.6.0
 narwhals==2.23.0
 numpy==2.5.1
+packaging==26.2
 pandas==3.0.3
+psycopg2-binary==2.9.12
 pyarrow==24.0.0
 python-dateutil==2.9.0.post0
 scikit-learn==1.9.0
